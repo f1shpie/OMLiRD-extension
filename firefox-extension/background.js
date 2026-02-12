@@ -11,18 +11,28 @@ browser.runtime.onInstalled.addListener(() => {
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "open-in-real-debrid") {
-    if (info.linkUrl.startsWith("magnet:")) {
-      browser.tabs.create({ url: "https://real-debrid.com/torrents", active: true }).then((newTab) => {
+    if (info.linkUrl && info.linkUrl.startsWith("magnet:")) {
+      browser.tabs.create({ 
+        url: "https://real-debrid.com/torrents", 
+        active: true 
+      }).then((newTab) => {
+        // Wait for the tab to load completely
         const onUpdated = (tabId, changeInfo) => {
           if (tabId === newTab.id && changeInfo.status === "complete") {
             browser.tabs.onUpdated.removeListener(onUpdated);
+            
+            // Execute the script to inject the magnet link
             browser.tabs.executeScript(newTab.id, {
-              code: `(${injectScript})("${info.linkUrl}");`,
-            }).catch(console.error);
+              code: `(${injectScript.toString()})("${info.linkUrl}");`
+            }).catch((error) => {
+              console.error("Error injecting magnet link:", error);
+            });
           }
         };
         browser.tabs.onUpdated.addListener(onUpdated);
-      }).catch(console.error);
+      }).catch((error) => {
+        console.error("Error creating tab:", error);
+      });
     } else {
       browser.notifications.create({
         type: "basic",
@@ -35,7 +45,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 function injectScript(magnetLink) {
-  const waitForElement = (selector, timeout = 5000) => {
+  const waitForElement = (selector, timeout = 10000) => {
     return new Promise((resolve, reject) => {
       const interval = 100;
       const start = Date.now();
@@ -55,12 +65,20 @@ function injectScript(magnetLink) {
     });
   };
 
-  waitForElement('input[name="magnet"]').then((inputField) => {
-    inputField.value = magnetLink;
-    return waitForElement('input[type="submit"].button');
-  }).then((submitButton) => {
-    submitButton.click();
-  }).catch((error) => {
-    console.error("Error injecting magnet link:", error.message);
-  });
+  // Wait for the form elements to load, then inject the magnet link
+  waitForElement('input[name="magnet"]')
+    .then((inputField) => {
+      inputField.value = magnetLink;
+      return waitForElement('input[type="submit"].button');
+    })
+    .then((submitButton) => {
+      submitButton.click();
+    })
+    .catch((error) => {
+      console.error("Error injecting magnet link:", error.message);
+      if (magnetInput && submitBtn) {
+        magnetInput.value = magnetLink;
+        submitBtn.click();
+      }
+    });
 }

@@ -6,11 +6,12 @@
   "permissions": [
     "contextMenus",
     "notifications",
+    "tabs",
     "https://real-debrid.com/*"
   ],
   "background": {
     "scripts": [
-      "lib/browser-polyfill.js",
+      "browser-polyfill.js",
       "background.js"
     ]
   },
