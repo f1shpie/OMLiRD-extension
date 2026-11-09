@@ -7,4 +7,4 @@
  <p align="center"><a><img width="500" alt="Context Menu Screenshot" src="https://github.com/f1shpie/OMLiRD-chrome-extension/blob/main/files/screenshot1.png?raw=true"><text " "><img width="500" alt="Real Debrid Torrent Page" src="https://github.com/f1shpie/OMLiRD-chrome-extension/blob/main/files/screenshot2.jpg?raw=true"></a>
 
 #
-Any Questions or Suggestions? — Feel free to put them in [Issues](https://github.com/f1shpie/OMLiRD-extension/issues) :)
+Any Questions or Suggestions? Feel free to put them in [Issues](https://github.com/f1shpie/OMLiRD-extension/issues) :)

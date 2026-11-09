@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Open magnet links in Real-Debrid",
-  "version": "2.4.2",
+  "version": "2.4.4",
   "description": "Adds an option to the context menu to open magnet links in real-debrid.com/torrents. Please log in to Real-Debrid first.",
   "permissions": [
     "contextMenus",

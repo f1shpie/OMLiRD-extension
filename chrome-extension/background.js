@@ -11,7 +11,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "open-in-real-debrid") {
     // Check if the clicked link is a magnet link
-    if (info.linkUrl.startsWith("magnet:")) {
+    if (info.linkUrl && info.linkUrl.startsWith("magnet:")) {
       // Open the Real-Debrid page
       chrome.tabs.create({ url: "https://real-debrid.com/torrents", active: true }, (newTab) => {
         // Wait for the tab to load completely
@@ -43,14 +43,40 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 // Function to inject the magnet link into the Real-Debrid form
-function injectScript(magnetLink) {
-  const inputField = document.querySelector('input[name="magnet"]');
-  const submitButton = document.querySelector('input[type="submit"].button');
+async function injectScript(magnetLink) {
+  const selectors = [
+    'input[name="magnet"]',
+    'textarea[name="magnet"]',
+    'input[name="url"]',
+    'textarea[name="url"]',
+  ];
+  const deadline = Date.now() + 15000;
+  let inputField;
 
-  if (inputField && submitButton) {
-    inputField.value = magnetLink;  // Set the magnet link value in the input field
-    submitButton.click();  // Click the submit button to submit the form
-  } else {
-    console.error("Form elements not found on the Real-Debrid page.");
+  while (!inputField && Date.now() < deadline) {
+    inputField = selectors.map((selector) => document.querySelector(selector)).find(Boolean);
+    if (!inputField) await new Promise((resolve) => setTimeout(resolve, 150));
   }
+
+  if (!inputField) {
+    console.error("Magnet input was not found on the Real-Debrid page.");
+    return;
+  }
+
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(inputField), "value")?.set;
+  if (setter) setter.call(inputField, magnetLink);
+  else inputField.value = magnetLink;
+  inputField.dispatchEvent(new Event("input", { bubbles: true }));
+  inputField.dispatchEvent(new Event("change", { bubbles: true }));
+
+  const form = inputField.closest("form");
+  if (form) {
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.submit();
+    return;
+  }
+
+  const submitButton = document.querySelector('button[type="submit"], input[type="submit"]');
+  if (submitButton) submitButton.click();
+  else console.error("Magnet form submit control was not found on the Real-Debrid page.");
 }

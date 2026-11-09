@@ -23,7 +23,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
             
             // Execute the script to inject the magnet link
             browser.tabs.executeScript(newTab.id, {
-              code: `(${injectScript.toString()})("${info.linkUrl}");`
+              code: `(${injectScript.toString()})(${JSON.stringify(info.linkUrl)});`
             }).catch((error) => {
               console.error("Error injecting magnet link:", error);
             });
@@ -44,41 +44,40 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-function injectScript(magnetLink) {
-  const waitForElement = (selector, timeout = 10000) => {
-    return new Promise((resolve, reject) => {
-      const interval = 100;
-      const start = Date.now();
+async function injectScript(magnetLink) {
+  const selectors = [
+    'input[name="magnet"]',
+    'textarea[name="magnet"]',
+    'input[name="url"]',
+    'textarea[name="url"]',
+  ];
+  const deadline = Date.now() + 15000;
+  let inputField;
 
-      const check = () => {
-        const element = document.querySelector(selector);
-        if (element) {
-          resolve(element);
-        } else if (Date.now() - start > timeout) {
-          reject(new Error("Element not found: " + selector));
-        } else {
-          setTimeout(check, interval);
-        }
-      };
+  while (!inputField && Date.now() < deadline) {
+    inputField = selectors.map((selector) => document.querySelector(selector)).find(Boolean);
+    if (!inputField) await new Promise((resolve) => setTimeout(resolve, 150));
+  }
 
-      check();
-    });
-  };
+  if (!inputField) {
+    console.error("Magnet input was not found on the Real-Debrid page.");
+    return;
+  }
 
-  // Wait for the form elements to load, then inject the magnet link
-  waitForElement('input[name="magnet"]')
-    .then((inputField) => {
-      inputField.value = magnetLink;
-      return waitForElement('input[type="submit"].button');
-    })
-    .then((submitButton) => {
-      submitButton.click();
-    })
-    .catch((error) => {
-      console.error("Error injecting magnet link:", error.message);
-      if (magnetInput && submitBtn) {
-        magnetInput.value = magnetLink;
-        submitBtn.click();
-      }
-    });
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(inputField), "value")?.set;
+  if (setter) setter.call(inputField, magnetLink);
+  else inputField.value = magnetLink;
+  inputField.dispatchEvent(new Event("input", { bubbles: true }));
+  inputField.dispatchEvent(new Event("change", { bubbles: true }));
+
+  const form = inputField.closest("form");
+  if (form) {
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.submit();
+    return;
+  }
+
+  const submitButton = document.querySelector('button[type="submit"], input[type="submit"]');
+  if (submitButton) submitButton.click();
+  else console.error("Magnet form submit control was not found on the Real-Debrid page.");
 }
